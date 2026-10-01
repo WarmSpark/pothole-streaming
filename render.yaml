@@ -1,0 +1,37 @@
+services:
+  # 1. Django API & Video Byte-Range Streaming Engine
+  - type: web
+    name: pothole-backend
+    env: python
+    rootDir: pothole-django
+    plan: free
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn pothole_backend.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --timeout 120"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com,localhost,127.0.0.1"
+      - key: CORS_ALLOW_ALL_ORIGINS
+        value: "True"
+
+  # 2. React Vite Frontend (100% Free Global Edge CDN)
+  - type: static_site
+    name: pothole-frontend
+    rootDir: mediamerge-web
+    buildCommand: "npm install && npm run build"
+    publishPath: "dist"
+    routes:
+      - type: rewrite
+        source: "/*"
+        destination: "/index.html"
+    envVars:
+      - key: VITE_API_BASE
+        fromService:
+          type: web
+          name: pothole-backend
+          envVarKey: RENDER_EXTERNAL_URL

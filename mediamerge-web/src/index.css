@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --netflix-black: #141414;
+    --netflix-red: #E50914;
+    --netflix-gray: #e5e5e5;
+    --netflix-dark-gray: #181818;
+    --netflix-green: #46d369;
+  }
+
+  html, body, #root {
+    background-color: #141414 !important;
+    color: #ffffff;
+    min-height: 100vh;
+    font-family: 'Netflix Sans', 'Helvetica Neue', Segoe UI, Roboto, Ubuntu, sans-serif;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Custom Netflix scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #141414;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555555;
+}
+
+/* Netflix Hero Gradient Fades */
+.netflix-hero-v-fade {
+  background: linear-gradient(180deg, 
+    rgba(20, 20, 20, 0) 0%, 
+    rgba(20, 20, 20, 0.2) 40%, 
+    rgba(20, 20, 20, 0.8) 75%, 
+    #141414 100%
+  );
+}
+
+.netflix-hero-h-fade {
+  background: linear-gradient(90deg, 
+    rgba(20, 20, 20, 0.95) 0%, 
+    rgba(20, 20, 20, 0.7) 35%, 
+    rgba(20, 20, 20, 0.2) 65%, 
+    transparent 100%
+  );
+}
+
+/* Netflix Card Hover Transition */
+.netflix-card {
+  transition: transform 0.35s cubic-bezier(0.33, 1, 0.68, 1), box-shadow 0.35s ease;
+}
+
+.netflix-card:hover {
+  transform: scale(1.15);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
+  z-index: 40;
+}
+
+/* Hide scrollbar for carousels */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

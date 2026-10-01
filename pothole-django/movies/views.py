@@ -64,9 +64,10 @@ def movies_collection(request):
 
         data = MovieSerializer(movies, many=True).data
 
-        # Ensure video_url points to our secure streaming proxy
+        # Ensure video_url points to our streaming proxy while exposing direct_video_url for high-speed client playback
         for item in data:
             if item.get('stream_type') == 'full' and item.get('video_url'):
+                item['direct_video_url'] = item.get('video_url')
                 item['video_url'] = request.build_absolute_uri(f"/api/movies/{item['id']}/stream")
 
         return Response(data)
@@ -101,6 +102,7 @@ def movies_collection(request):
 
         res_data = MovieSerializer(movie).data
         if movie.stream_type == 'full' and movie.video_url:
+            res_data['direct_video_url'] = movie.video_url
             res_data['video_url'] = request.build_absolute_uri(f"/api/movies/{movie.id}/stream")
 
         return Response(res_data, status=status.HTTP_201_CREATED)
@@ -111,6 +113,7 @@ def movie_detail(request, movie_id):
     movie = get_object_or_404(Movie, id=movie_id)
     data = MovieSerializer(movie).data
     if movie.stream_type == 'full' and movie.video_url:
+        data['direct_video_url'] = movie.video_url
         data['video_url'] = request.build_absolute_uri(f"/api/movies/{movie.id}/stream")
     return Response(data)
 
@@ -138,6 +141,7 @@ def movie_recommendations(request, movie_id):
     data = MovieSerializer(recs, many=True).data
     for item in data:
         if item.get('stream_type') == 'full' and item.get('video_url'):
+            item['direct_video_url'] = item.get('video_url')
             item['video_url'] = request.build_absolute_uri(f"/api/movies/{item['id']}/stream")
     return Response(data)
 
@@ -197,12 +201,25 @@ def stream_movie(request, movie_id):
     if not fileditch_url or not fileditch_url.startswith('http'):
         return HttpResponse("Media stream asset not configured", status=404)
 
-    req_headers = {}
+    req_headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+        'Referer': 'https://fileditch.com/',
+    }
     if range_header:
         req_headers['Range'] = range_header
 
     try:
         upstream = requests.get(fileditch_url, headers=req_headers, stream=True, timeout=15)
+        # If .st failed or challenged, attempt mirror .me
+        if (upstream.status_code >= 400 or 'text/html' in upstream.headers.get('Content-Type', '')) and 'fileditchfiles.st' in fileditch_url:
+            mirror_url = fileditch_url.replace('fileditchfiles.st', 'fileditchfiles.me')
+            try:
+                mirror_resp = requests.get(mirror_url, headers=req_headers, stream=True, timeout=10)
+                if mirror_resp.status_code < 400:
+                    upstream = mirror_resp
+            except Exception:
+                pass
         
         def upstream_iter():
             for chunk in upstream.iter_content(chunk_size=128 * 1024):

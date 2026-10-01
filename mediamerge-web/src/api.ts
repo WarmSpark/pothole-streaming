@@ -19,6 +19,7 @@ export interface Movie {
   poster_url: string;
   backdrop_url: string;
   video_url?: string;
+  direct_video_url?: string;
   studio_id?: string;
   created_at?: string;
 }

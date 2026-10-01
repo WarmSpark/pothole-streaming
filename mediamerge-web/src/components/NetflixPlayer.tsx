@@ -14,7 +14,9 @@ import {
   CheckCircle2,
   Film,
   Sparkles,
-  Info
+  Info,
+  ExternalLink,
+  Tv
 } from 'lucide-react';
 
 interface NetflixPlayerProps {
@@ -68,7 +70,7 @@ export const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
 
   // 10s Real-Time Royalty Telemetry Heartbeat (Only for full master movies)
   useEffect(() => {
-    if (!isPlaying || movie.stream_type === 'trailer') return;
+    if (movie.stream_type === 'trailer') return;
 
     const token = localStorage.getItem('pothole_token');
 
@@ -84,7 +86,7 @@ export const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [isPlaying, movie.id, movie.stream_type]);
+  }, [movie.id, movie.stream_type]);
 
   // Auto-hide controls
   const handleMouseMove = () => {
@@ -117,7 +119,13 @@ export const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  const isTrailer = movie.stream_type === 'trailer' || !movie.video_url;
+  const isTrailer = movie.stream_type === 'trailer' || (!movie.video_url && !movie.direct_video_url);
+  const directUrl = movie.direct_video_url || movie.video_url || '';
+  const isFileditch = Boolean(
+    directUrl &&
+    (directUrl.includes('fileditchfiles.st') || directUrl.includes('fileditchfiles.me') || directUrl.includes('fileditch.com'))
+  );
+  const [useIframePlayer, setUseIframePlayer] = useState(isFileditch);
 
   return (
     <div
@@ -155,6 +163,33 @@ export const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
             </p>
           </div>
         </div>
+
+        {/* Right Header Options (Player Mode Toggle & Direct Link) */}
+        <div className="flex items-center gap-3">
+          {isFileditch && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setUseIframePlayer(!useIframePlayer)}
+                className="text-xs bg-white/10 hover:bg-white/20 text-gray-200 px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-colors cursor-pointer border border-white/10"
+                title="Switch Player Mode"
+              >
+                <Tv className="w-3.5 h-3.5 text-[#E50914]" />
+                <span>{useIframePlayer ? 'Mode: Web Player' : 'Mode: HTML5 Video'}</span>
+              </button>
+
+              <a
+                href={directUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs bg-white/10 hover:bg-white/20 text-gray-200 px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-colors cursor-pointer border border-white/10"
+                title="Open stream directly"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-gray-300" />
+                <span>Open Direct</span>
+              </a>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Center Video Viewport */}
@@ -171,11 +206,22 @@ export const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
               referrerPolicy="strict-origin-when-cross-origin"
             />
           </div>
+        ) : useIframePlayer ? (
+          /* FileDitch Native Browser Stream Frame (Resolves WASM Check in 1s) */
+          <div className="w-full h-full flex items-center justify-center bg-black">
+            <iframe
+              src={directUrl}
+              title={movie.title}
+              className="w-full h-full border-0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+              allowFullScreen
+            />
+          </div>
         ) : (
           /* HTML5 Video Element for Master Stream */
           <video
             ref={videoRef}
-            src={movie.video_url || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'}
+            src={directUrl || movie.video_url || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'}
             className="w-full h-full object-contain cursor-pointer"
             autoPlay
             playsInline
@@ -185,8 +231,8 @@ export const NetflixPlayer: React.FC<NetflixPlayerProps> = ({
         )}
       </div>
 
-      {/* Bottom Controls Bar (For Master Videos) */}
-      {!isTrailer && (
+      {/* Bottom Controls Bar (For Master Videos when in HTML5 mode) */}
+      {!isTrailer && !useIframePlayer && (
         <div
           className={`absolute bottom-0 left-0 right-0 z-30 p-6 bg-gradient-to-t from-black/95 via-black/60 to-transparent transition-opacity duration-300 space-y-3 ${
             showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
